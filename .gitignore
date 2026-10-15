@@ -1,0 +1,29 @@
+# Python 虚拟环境与缓存
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 本机配置与密钥
+.env
+.env.*
+!.env.example
+
+# 本地运行产物
+logs/
+output/
+models/
+*.log
+
+# 大型本地样本文档，不推送到 GitHub
+doc/
+
+# IDE 与操作系统文件
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

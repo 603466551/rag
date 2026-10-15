@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>本机服务状态</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Microsoft YaHei", system-ui, sans-serif; }
+    body { margin: 0; min-height: 100vh; background: #0d1117; color: #e6edf3; }
+    main { max-width: 1080px; margin: 0 auto; padding: 44px 24px; }
+    h1 { margin: 0; font-size: 30px; }
+    .subtitle { color: #8b949e; margin: 10px 0 28px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 22px; }
+    button { border: 0; border-radius: 7px; padding: 9px 15px; background: #238636; color: #fff; cursor: pointer; font-size: 14px; }
+    button:hover { background: #2ea043; }
+    #updated { color: #8b949e; font-size: 14px; }
+    #error { color: #ff7b72; min-height: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 14px; }
+    .card { border: 1px solid #30363d; border-radius: 10px; padding: 18px; background: #161b22; }
+    .head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    h2 { margin: 0; font-size: 17px; }
+    .tag { border-radius: 99px; padding: 4px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .up { background: #0f5132; color: #7ee787; }
+    .down { background: #5a1e22; color: #ff7b72; }
+    .warning { background: #5b4214; color: #f2cc60; }
+    .disabled { background: #30363d; color: #8b949e; }
+    p { margin: 14px 0 0; color: #c9d1d9; font-size: 14px; line-height: 1.55; }
+    .required { margin-top: 12px; color: #8b949e; font-size: 12px; }
+    .links { margin-top: 28px; display: flex; gap: 15px; flex-wrap: wrap; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>本机服务状态</h1>
+    <p class="subtitle">每 5 秒自动刷新。状态检测不会显示密钥，也不会修改数据库或对象存储数据。</p>
+    <div class="toolbar">
+      <button id="refresh" type="button">立即刷新</button>
+      <span id="updated">正在检查…</span>
+    </div>
+    <div id="error"></div>
+    <section id="services" class="grid" aria-live="polite"></section>
+    <nav class="links">
+      <a href="/import.html">文档导入</a>
+      <a href="http://127.0.0.1:8001/chat.html">智能问答</a>
+      <a href="http://localhost:9091/webui/" target="_blank" rel="noreferrer">Attu</a>
+      <a href="http://localhost:9001/browser" target="_blank" rel="noreferrer">MinIO 控制台</a>
+    </nav>
+  </main>
+  <script>
+    const labels = { up: "正常", down: "不可用", warning: "需处理", disabled: "已关闭" };
+    const services = document.getElementById("services");
+    const updated = document.getElementById("updated");
+    const error = document.getElementById("error");
+
+    function escapeHtml(value) {
+      const node = document.createElement("span");
+      node.textContent = value;
+      return node.innerHTML;
+    }
+
+    async function refreshStatus() {
+      const button = document.getElementById("refresh");
+      button.disabled = true;
+      error.textContent = "";
+      try {
+        const response = await fetch("/service-status", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        services.innerHTML = Object.values(data.services).map((service) => `
+          <article class="card">
+            <div class="head">
+              <h2>${escapeHtml(service.name)}</h2>
+              <span class="tag ${escapeHtml(service.status)}">${labels[service.status] || service.status}</span>
+            </div>
+            <p>${escapeHtml(service.detail)}</p>
+            <div class="required">${service.required ? "启动必需" : "可选组件"}</div>
+          </article>
+        `).join("");
+        updated.textContent = `最后检查：${data.checked_at}`;
+      } catch (err) {
+        error.textContent = `无法读取状态：${err.message}`;
+        updated.textContent = "检查失败";
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    document.getElementById("refresh").addEventListener("click", refreshStatus);
+    refreshStatus();
+    setInterval(refreshStatus, 5000);
+  </script>
+</body>
+</html>
